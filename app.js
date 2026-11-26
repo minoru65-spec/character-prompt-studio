@@ -29,6 +29,7 @@ function normalize(value) {
   return result;
 }
 const fields = new Set('mode purpose age platform language gender nationality includeNationality birth raised location occupation profileNote photoStyle artStyle photoBody artBody wardrobe uniform season wardrobeNote framing blur grime grimeArea skin skinArea damage lenses lensEdge lensNote dye hairColor hairNote artSkin setting gesture mood shotNote ratio resolution'.split(' '));
+for (const key of ['hairstyle','bangs','build','gaze','expression']) fields.add(key);
 const saved = readStorage();
 let state = defaults();
 try { if (saved.draft) state = normalize(saved.draft); } catch {}
@@ -187,6 +188,8 @@ function render() {
   select(appearance,'lenses','カラコン','lenses',{negatives:true});
   select(appearance,'lensEdge','カラコンのフチ');
   input(appearance,'lensNote','左右の色・発色');
+  select(appearance,'hairstyle','髪型');
+  select(appearance,'bangs','前髪');
   select(appearance,'dye','ヘアカラー加工');
   select(appearance,'hairColor','髪色','color');
   input(appearance,'hairNote','髪型・色の補足');
@@ -200,13 +203,16 @@ function render() {
   const finish = $('finish');
   const photo = state.mode === 'photo';
   select(finish,photo?'photoStyle':'artStyle','スタイル',photo?'photoStyle':'artStyle',{required:true});
-  select(finish,photo?'photoBody':'artBody','体格・頭身');
-  if (purposeKey(state) === 'portrait') select(finish,'framing','画角');
+  select(finish,'build','体形');
+  select(finish,photo?'photoBody':'artBody',photo?'体の比率・体格の補足':'頭身');
+  select(finish,'framing',purposeKey(state) === 'sheet' ? '追加カットのトリミング' : '人物のトリミング');
   select(finish,'grime','清潔感・汚れ');
   input(finish,'grimeArea','汚れ・着用感の部位','例：靴のつま先だけ');
   select(finish,'blur','ぼかし効果','blur',{negatives:true});
   select(finish,'mood','光の当たり方');
-  select(finish,'gesture','表情・しぐさ');
+  select(finish,'gaze','目線');
+  select(finish,'expression','表情');
+  select(finish,'gesture','しぐさ');
   input(finish,'setting','背景・場所・時間帯');
   select(finish,'ratio','縦横比');
   select(finish,'resolution','希望解像度');
@@ -232,16 +238,22 @@ function build(s) {
   const join = values => values.map(item => String(item || '').trim()).filter(Boolean).join(en ? ', ' : '、');
   const describe = (label, content) => content ? `${label}${en ? ': ' : '：'}${content}` : '';
   const base = s.mode === 'photo' ? s.photoStyle : s.artStyle;
+  const detailedArt = s.mode === 'art' && s.artStyle === '半写実|semi-realistic illustration';
+  const medium = detailedArt ? pair(
+    '緻密な半写実デジタルイラスト。写実寄りの人体構造と、手描きの細い輪郭線、重ね塗りの陰影、髪や布の細かな筆致が見える描画。',
+    'Intricate hand-drawn semi-realistic digital illustration, realistic anatomy, fine drawn contours, layered painted shadows, visible painted strokes in individual hair strands and fabric folds.'
+  ) : value(base);
   const shape = s.mode === 'photo' ? s.photoBody : s.artBody;
   const purpose = purposeKey(s);
   const purposeDescriptions = {
     portrait:pair('ブロマイド。自然なポーズで、視線の先に余白を取る。','Bromide portrait, relaxed pose, breathing room in the direction of the gaze.'),
     sheet:pair('全身の正面・側面・背面と顔アップを無地背景に並べたキャラクター設定シート。同じ髪型・衣装・頭身を各ビューに反映。','Character reference sheet with full-body front, side and back views and a face close-up on a plain background. Preserve hairstyle, clothes and proportions in each view.'),
-    icon:pair('正方形のアイコン。顔を中央に置き、円形に切り抜ける余白を確保。','Square face-centered avatar, with safe margins for a circular crop.'),
+    icon:s.framing ? pair('人物を中央に配置したアイコン。','Centered character avatar.') :
+      pair('正方形のアイコン。顔を中央に置き、円形に切り抜ける余白を確保。','Square face-centered avatar, with safe margins for a circular crop.'),
   };
   const nationalities = (s.nationality || '').split(',').filter(code => countryCodes.includes(code)).map(code => en ? countryEnglish.of(code) : countries.of(code));
   const identity = [
-    value(s.age),value(s.gender),value(shape),
+    value(s.age),value(s.gender),value(s.build),value(shape),
     s.includeNationality ? describe(pair('国籍','nationality'),join(nationalities)) : '',
     describe(pair('出生地','birthplace'),s.birth),describe(pair('育った場所','raised in'),s.raised),
     describe(pair('居住地','residence'),s.location),s.occupation,s.profileNote,
@@ -253,7 +265,7 @@ function build(s) {
     ...faces,
     s.skin && describe(pair('肌','skin'),join([value(s.skin),value(s.damage),s.skinArea,s.mode === 'art' && s.artSkin])),
     describe(pair('瞳','eyes'),join([value(s.lenses),value(s.lensEdge),s.lensNote])),
-    describe(pair('髪','hair'),join([value(s.dye),value(s.hairColor),s.hairNote])),
+    describe(pair('髪','hair'),join([value(s.hairstyle),value(s.bangs),value(s.dye),value(s.hairColor),s.hairNote])),
   ];
   const clothes = [
     s.wardrobe === choices.wardrobe[0] && s.uniform ? value(s.uniform) : value(s.wardrobe),
@@ -265,7 +277,9 @@ function build(s) {
   ];
   const ratio = value(s.ratio) || ({sheet:'3:2',icon:'1:1',portrait:'2:3'})[purpose];
   const finish = [
-    purpose === 'portrait' && value(s.framing),value(s.gesture),s.setting,value(s.mood),
+    s.framing && (purpose === 'sheet' ? describe(pair('追加カット','additional view'),value(s.framing)) : value(s.framing)),
+    describe(pair('目線','gaze'),value(s.gaze)),describe(pair('表情','expression'),value(s.expression)),
+    value(s.gesture),s.setting,value(s.mood),
     s.grime && describe(pair('清潔感・汚れ','wear and dirt'),join([value(s.grime),s.grimeArea])),
     value(s.blur),s.shotNote,
     s.resolution && describe(pair('希望解像度','requested resolution'),value(s.resolution)),
@@ -275,9 +289,10 @@ function build(s) {
   const warnings = rules.filter(([key]) => conflicts(s,key)).map(([,rule]) => rule[0]);
   if (conflicts(s,'custom')) warnings.push('避けたい表現の自由入力');
   if (purpose === 'icon' && ratio !== '1:1') warnings.push('アイコンの構図と縦横比');
+  if (s.build && s.mode === 'photo' && s.photoBody === choices.photoBody.at(-1) && s.build === choices.build[0]) warnings.push('スリムな体形とふくよかな体格');
   const custom = s.negativeText[s.mode].trim();
   const lines = [
-    value(base),purposeDescriptions[purpose],
+    medium,purposeDescriptions[purpose],
     describe(pair('人物','Subject'),join(identity)),
     describe(pair('顔・肌・髪','Face, skin and hair'),join(details)),
     describe(pair('衣装','Wardrobe'),join(clothes)),
@@ -286,6 +301,7 @@ function build(s) {
   if (s.platform === 'mid') {
     const positive = rules.filter(([,rule]) => !rule[2]).map(([,rule]) => rule[1]);
     const exclude = rules.filter(([,rule]) => rule[2]).map(([,rule]) => rule[1]);
+    if (detailedArt) exclude.push('photograph');
     const body = [...lines,...positive,custom && `Avoid the following appearance: ${custom}`].filter(Boolean).join('\n');
     return {prompt:`${body}\n--ar ${ratio}${exclude.length ? ` --no ${exclude.join(', ')}` : ''}`, warnings};
   }
@@ -293,6 +309,7 @@ function build(s) {
     if (!en) return rule[0];
     return rule[2] ? `Exclude ${rule[1]}.` : `Use ${rule[1]}.`;
   });
+  if (detailedArt) exclusions.push(pair('実写写真の質感・カメラで撮影したような描写','Avoid photographic rendering.'));
   if (custom) exclusions.push(en ? `Avoid: ${custom}` : custom);
   if (exclusions.length) lines.push(describe(pair('避けたい表現','Constraints'),join(exclusions)));
   return {prompt:lines.join('\n'),warnings};
