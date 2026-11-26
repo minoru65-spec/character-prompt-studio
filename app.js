@@ -29,7 +29,8 @@ function normalize(value) {
   return result;
 }
 const fields = new Set('mode purpose age platform language gender nationality includeNationality birth raised location occupation profileNote photoStyle artStyle photoBody artBody wardrobe uniform season wardrobeNote framing blur grime grimeArea skin skinArea damage lenses lensEdge lensNote dye hairColor hairNote artSkin setting gesture mood shotNote ratio resolution'.split(' '));
-for (const key of ['hairstyle','bangs','build','gaze','expression']) fields.add(key);
+for (const key of ['hairstyle','bangs','build','gaze','expression','cameraAngle','cameraLens']) fields.add(key);
+const cameraOptions = key => choices[key].map(([label], index) => [String(index + 1), label]);
 const saved = readStorage();
 let state = defaults();
 try { if (saved.draft) state = normalize(saved.draft); } catch {}
@@ -206,6 +207,8 @@ function render() {
   select(finish,'build','体形');
   select(finish,photo?'photoBody':'artBody',photo?'体の比率・体格の補足':'頭身');
   select(finish,'framing',purposeKey(state) === 'sheet' ? '追加カットのトリミング' : '人物のトリミング');
+  field(finish,state,'cameraAngle',photo ? 'カメラの高さ・アングル' : '視点の高さ・アングル',cameraOptions('cameraAngle'));
+  field(finish,state,'cameraLens',photo ? 'レンズ（35mm判換算）' : 'レンズ風の遠近感',cameraOptions('cameraLens'));
   select(finish,'grime','清潔感・汚れ');
   input(finish,'grimeArea','汚れ・着用感の部位','例：靴のつま先だけ');
   select(finish,'blur','ぼかし効果','blur',{negatives:true});
@@ -276,8 +279,16 @@ function build(s) {
     }),
   ];
   const ratio = value(s.ratio) || ({sheet:'3:2',icon:'1:1',portrait:'2:3'})[purpose];
+  const angle = choices.cameraAngle[Number(s.cameraAngle) - 1];
+  const lens = choices.cameraLens[Number(s.cameraLens) - 1];
+  const camera = join([
+    angle && pair(angle[0],angle[1]),
+    lens && (s.mode === 'photo' ? pair(lens[0],lens[1]) : pair(`${lens[0]}風の遠近感`,lens[2])),
+  ]);
   const finish = [
     s.framing && (purpose === 'sheet' ? describe(pair('追加カット','additional view'),value(s.framing)) : value(s.framing)),
+    describe(purpose === 'sheet' ? pair('追加カットの視点・レンズ','additional view perspective') :
+      s.mode === 'photo' ? pair('カメラ','Camera') : pair('描画の視点・遠近感','Illustrated viewpoint and perspective'),camera),
     describe(pair('目線','gaze'),value(s.gaze)),describe(pair('表情','expression'),value(s.expression)),
     value(s.gesture),s.setting,value(s.mood),
     s.grime && describe(pair('清潔感・汚れ','wear and dirt'),join([value(s.grime),s.grimeArea])),
