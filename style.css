@@ -47,5 +47,8 @@ textarea{resize:vertical;font-size:.94rem;min-height:12rem;height:clamp(13rem,32
 .file-button input{position:absolute;inset:0;opacity:0;width:100%;cursor:pointer}
 #status,#warning{font-size:.875rem;color:var(--accent)}
 #status:empty{display:none}
+#warning[data-conflict="false"]{color:var(--muted)}
+label:has(select:disabled){color:#a49da9}
+select:disabled{color:#a49da9;background-color:#28252d;cursor:not-allowed;opacity:.65}
 @media(max-width:820px){.layout{grid-template-columns:1fr}.output{position:static}.intro{padding-top:1.8rem}}
 @media(max-width:380px){.shell{width:calc(100% - 1rem)}.grid{grid-template-columns:1fr}}

@@ -10,6 +10,11 @@ const choices = {
   wardrobe: ['学生の制服|school uniform','カジュアル|casual outfit','ビジネス|business attire','フォーマル|formal attire','スポーツ|sportswear','作業着|workwear','自由入力|custom attire'],
   season: ['春|spring clothes','夏|summer clothes','秋|autumn clothes','冬|winter clothes'],
   framing: ['全身|full-body framing','膝上|knees-up framing','腰上|waist-up framing','胸上|bust portrait','肩上|head-and-shoulders framing','顔アップ|face close-up','ドアップ|extreme facial close-up with the face filling the frame'],
+  lineWidth: ['極細線|hairline-thin contours','細線|fine contours','中太線|medium-weight contours','太線|bold, thick contours','輪郭は太く、細部は細く|bold outer contours and fine interior lines'],
+  linePressure: ['弱め・軽いタッチ|light pen pressure with delicate strokes','均一・強弱を抑える|even pen pressure with restrained stroke variation','強め・力強いタッチ|firm pen pressure with emphatic strokes','強弱をつける|variable pen pressure with broad-to-tapered strokes'],
+  placement: ['中央|subject centered in the frame','左寄せ|subject positioned left in the frame','右寄せ|subject positioned right in the frame','上寄せ|subject positioned in the upper part of the frame','下寄せ|subject positioned in the lower part of the frame','左上の三分割交点|subject focal point on the upper-left rule-of-thirds intersection','右上の三分割交点|subject focal point on the upper-right rule-of-thirds intersection'],
+  subjectScale: ['小さめ・余白を広く|subject occupies a small portion of the frame with generous surrounding space','中くらい・余白とバランス|moderate subject size balanced against surrounding space','大きめ・画面いっぱい|subject fills most of the frame'],
+  negativeSpace: ['左側に余白|open negative space on the left','右側に余白|open negative space on the right','上側に余白|open negative space above the subject','下側に余白|open negative space below the subject','周囲に均等な余白|even breathing room around the subject'],
   cameraAngle: [
     ['地面すれすれから見上げる','ground-level worm’s-eye view looking steeply up'],
     ['ローアングル（腰の高さから見上げる）','low-angle view looking up from waist height'],

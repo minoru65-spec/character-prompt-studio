@@ -30,6 +30,7 @@ function normalize(value) {
 }
 const fields = new Set('mode purpose age platform language gender nationality includeNationality birth raised location occupation profileNote photoStyle artStyle photoBody artBody wardrobe uniform season wardrobeNote framing blur grime grimeArea skin skinArea damage lenses lensEdge lensNote dye hairColor hairNote artSkin setting gesture mood shotNote ratio resolution'.split(' '));
 for (const key of ['hairstyle','bangs','build','gaze','expression','cameraAngle','cameraLens']) fields.add(key);
+for (const key of ['lineWidth','linePressure','placement','subjectScale','negativeSpace']) fields.add(key);
 const cameraOptions = key => choices[key].map(([label], index) => [String(index + 1), label]);
 const saved = readStorage();
 let state = defaults();
@@ -78,6 +79,7 @@ function field(parent, target, key, label, options, config = {}) {
     control.maxLength = 500;
   }
   if (!config.check) wrapper.append(control);
+  control.disabled = !!config.disabled;
   parent.append(wrapper);
   control.addEventListener(options || config.check ? 'change' : 'input', () => {
     target[key] = config.check ? control.checked : config.multiple
@@ -204,9 +206,14 @@ function render() {
   const finish = $('finish');
   const photo = state.mode === 'photo';
   select(finish,photo?'photoStyle':'artStyle','スタイル',photo?'photoStyle':'artStyle',{required:true});
+  select(finish,'lineWidth','線の太さ（イラストのみ）','lineWidth',{disabled:photo});
+  select(finish,'linePressure','筆圧（イラストのみ）','linePressure',{disabled:photo});
   select(finish,'build','体形');
   select(finish,photo?'photoBody':'artBody',photo?'体の比率・体格の補足':'頭身');
   select(finish,'framing',purposeKey(state) === 'sheet' ? '追加カットのトリミング' : '人物のトリミング');
+  select(finish,'placement',purposeKey(state) === 'sheet' ? '追加カット内の人物位置' : '画面内の人物位置');
+  select(finish,'subjectScale','画面内の人物の大きさ');
+  select(finish,'negativeSpace','余白の位置');
   field(finish,state,'cameraAngle',photo ? 'カメラの高さ・アングル' : '視点の高さ・アングル',cameraOptions('cameraAngle'));
   field(finish,state,'cameraLens',photo ? 'レンズ（35mm判換算）' : 'レンズ風の遠近感',cameraOptions('cameraLens'));
   select(finish,'grime','清潔感・汚れ');
@@ -243,15 +250,17 @@ function build(s) {
   const base = s.mode === 'photo' ? s.photoStyle : s.artStyle;
   const detailedArt = s.mode === 'art' && s.artStyle === '半写実|semi-realistic illustration';
   const medium = detailedArt ? pair(
-    '緻密な半写実デジタルイラスト。写実寄りの人体構造と、手描きの細い輪郭線、重ね塗りの陰影、髪や布の細かな筆致が見える描画。',
-    'Intricate hand-drawn semi-realistic digital illustration, realistic anatomy, fine drawn contours, layered painted shadows, visible painted strokes in individual hair strands and fabric folds.'
+    `緻密な半写実デジタルイラスト。写実寄りの人体構造と、${s.lineWidth ? '手描きの輪郭線' : '手描きの細い輪郭線'}、重ね塗りの陰影、髪や布の細かな筆致が見える描画。`,
+    `Intricate hand-drawn semi-realistic digital illustration, realistic anatomy, ${s.lineWidth ? 'hand-drawn contours' : 'fine drawn contours'}, layered painted shadows, visible painted strokes in individual hair strands and fabric folds.`
   ) : value(base);
   const shape = s.mode === 'photo' ? s.photoBody : s.artBody;
   const purpose = purposeKey(s);
   const purposeDescriptions = {
-    portrait:pair('ブロマイド。自然なポーズで、視線の先に余白を取る。','Bromide portrait, relaxed pose, breathing room in the direction of the gaze.'),
+    portrait:s.negativeSpace ? pair('ブロマイド。自然なポーズ。','Bromide portrait, relaxed pose.') :
+      pair('ブロマイド。自然なポーズで、視線の先に余白を取る。','Bromide portrait, relaxed pose, breathing room in the direction of the gaze.'),
     sheet:pair('全身の正面・側面・背面と顔アップを無地背景に並べたキャラクター設定シート。同じ髪型・衣装・頭身を各ビューに反映。','Character reference sheet with full-body front, side and back views and a face close-up on a plain background. Preserve hairstyle, clothes and proportions in each view.'),
-    icon:s.framing ? pair('人物を中央に配置したアイコン。','Centered character avatar.') :
+    icon:s.placement || s.subjectScale || s.negativeSpace ? pair('人物アイコン。','Character avatar.') :
+      s.framing ? pair('人物を中央に配置したアイコン。','Centered character avatar.') :
       pair('正方形のアイコン。顔を中央に置き、円形に切り抜ける余白を確保。','Square face-centered avatar, with safe margins for a circular crop.'),
   };
   const nationalities = (s.nationality || '').split(',').filter(code => countryCodes.includes(code)).map(code => en ? countryEnglish.of(code) : countries.of(code));
@@ -290,6 +299,8 @@ function build(s) {
     describe(purpose === 'sheet' ? pair('追加カットの視点・レンズ','additional view perspective') :
       s.mode === 'photo' ? pair('カメラ','Camera') : pair('描画の視点・遠近感','Illustrated viewpoint and perspective'),camera),
     describe(pair('目線','gaze'),value(s.gaze)),describe(pair('表情','expression'),value(s.expression)),
+    describe(purpose === 'sheet' ? pair('追加カット内の配置','additional view composition') :
+      pair('画面内の構図','composition within frame'),join([value(s.placement),value(s.subjectScale),value(s.negativeSpace)])),
     value(s.gesture),s.setting,value(s.mood),
     s.grime && describe(pair('清潔感・汚れ','wear and dirt'),join([value(s.grime),s.grimeArea])),
     value(s.blur),s.shotNote,
@@ -301,9 +312,14 @@ function build(s) {
   if (conflicts(s,'custom')) warnings.push('避けたい表現の自由入力');
   if (purpose === 'icon' && ratio !== '1:1') warnings.push('アイコンの構図と縦横比');
   if (s.build && s.mode === 'photo' && s.photoBody === choices.photoBody.at(-1) && s.build === choices.build[0]) warnings.push('スリムな体形とふくよかな体格');
+  if (s.gaze === choices.gaze.at(-1) && s.gesture === choices.gesture[1]) warnings.push('「目を閉じる」と「視線だけ先に向ける」が競合しています');
+  if (s.framing === choices.framing.at(-1) && s.subjectScale === choices.subjectScale[0]) warnings.push('「ドアップ」と「人物を小さめに配置」が競合しています');
+  const side = [undefined,'左','右','上','下','左','右'][choices.placement.indexOf(s.placement)];
+  if (side && s.negativeSpace?.startsWith(side+'側')) warnings.push(`人物と余白が同じ${side}側に指定されています`);
   const custom = s.negativeText[s.mode].trim();
   const lines = [
     medium,purposeDescriptions[purpose],
+    s.mode === 'art' && describe(pair('描線','Linework'),join([value(s.lineWidth),value(s.linePressure)])),
     describe(pair('人物','Subject'),join(identity)),
     describe(pair('顔・肌・髪','Face, skin and hair'),join(details)),
     describe(pair('衣装','Wardrobe'),join(clothes)),
@@ -326,6 +342,37 @@ function build(s) {
   return {prompt:lines.join('\n'),warnings};
 }
 
+function promptConflicts(prompt) {
+  const lines = prompt.split(/\r?\n/);
+  const description = lines.filter(line => !/^\s*(?:避けたい表現|Constraints|Avoid the following appearance)\s*[:：]/i.test(line))
+    .map(line => line.split(/(?:^|\s)--no\s/i)[0]).join('\n');
+  const ratios = [...prompt.matchAll(/(?:--ar\s+|(?:縦横比|aspect ratio)\s*[:：]\s*)(\d+\s*[:：]\s*\d+)/gi)]
+    .map(([,ratio]) => ratio.replace(/\s/g,'').replace('：',':'));
+  const warnings = [];
+  if (new Set(ratios).size > 1) warnings.push('複数の縦横比が指定されています');
+  if (/目を閉じる|\beyes closed\b/i.test(description) &&
+      /カメラ・鑑賞者を見る|カメラ目線|looking directly at the viewer|direct eye contact/i.test(description)) {
+    warnings.push('目を閉じる指示とカメラ目線が同時に指定されています');
+  }
+  if (/完全に左右対称|perfect facial symmetry/i.test(description) &&
+      /左右で少し異なる|natural facial asymmetry/i.test(description)) {
+    warnings.push('顔の左右対称と左右差が同時に指定されています');
+  }
+  for (const [label, positive, negative] of [
+    ['眼鏡', /眼鏡をかけ[るた]|メガネをかけ[るた]|wear(?:s|ing)? (?:eyeglasses|glasses)/i, /(?:眼鏡|メガネ)(?:は|を)?(?:なし|禁止)|\b(?:no|without) (?:eye)?glasses\b/i],
+    ['ぼかし', /背景ぼけ|ぼかしを入れる|blurred background/i, /(?:ぼかし)(?:は|を)?(?:なし|禁止)|\b(?:no blur|without blur)\b/i],
+  ]) {
+    if (positive.test(description) && negative.test(prompt)) warnings.push(`${label}を入れる指示と除外する指示があります`);
+  }
+  return warnings;
+}
+
+function showWarnings(settingsWarnings = []) {
+  const warnings = [...new Set([...settingsWarnings,...promptConflicts($('result').value)])];
+  $('warning').textContent = warnings.length ? `要確認 — ${warnings.join(' ／ ')}` : '主な矛盾は検出されませんでした。';
+  $('warning').dataset.conflict = String(Boolean(warnings.length));
+}
+
 function update() {
   for (const box of $('negative').querySelectorAll('input[data-rule]')) {
     const key = box.dataset.rule;
@@ -333,8 +380,7 @@ function update() {
   }
   const {prompt,warnings} = build(state);
   if (!isEdited) $('result').value = prompt;
-  $('warning').hidden = !warnings.length;
-  $('warning').textContent = warnings.length ? `設定が競合しています。 ${warnings.join('、')}` : '';
+  showWarnings(warnings);
   persist();
 }
 function refreshFavorites(index) {
@@ -366,6 +412,7 @@ for (const [button,key] of [['add-face','faces'],['add-item','items']]) {
 }
 $('result').oninput = () => {
   isEdited = true;
+  showWarnings(build(state).warnings);
   $('status').textContent = '編集中のプレビューを保持しています。設定を反映するには再生成してください。';
 };
 $('regenerate').onclick = () => {
