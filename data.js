@@ -1,0 +1,62 @@
+const choices = {
+  purpose: ['ブロマイド|vertical portrait, relaxed pose, balanced breathing room', 'キャラクター設定シート|character reference sheet, full-body front side and back views, face close-up, identical outfit in each view, plain background', 'アイコン|square face-centered avatar, readable expression, safe margins for a circular crop'],
+  age: ['子ども|child','10代|teenager','20代|adult in their twenties','30代|adult in their thirties','40代|adult in their forties','50代|adult in their fifties','60代以上|older adult'],
+  gender: ['女性的|feminine presentation','男性的|masculine presentation','中性的|androgynous presentation'],
+  photoStyle: ['スナップ|candid photograph','ポートレート|portrait photograph','ドキュメンタリー風|documentary photograph','フィルム写真風|analog film photograph'],
+  artStyle: ['手描きアニメ|hand-drawn anime illustration','セル画風|traditional cel illustration','漫画|manga illustration','半写実|semi-realistic illustration','水彩|watercolor illustration','厚塗り|painterly illustration'],
+  photoBody: ['自然な比率|natural body proportions','モデル体型|long-legged fashion model proportions','小柄|petite build','筋肉質|muscular build','ふくよか|full build'],
+  artBody: ['写実寄り・8頭身|realistic eight-head proportions','漫画体型・6頭身|stylized six-head manga proportions','デフォルメ・4頭身|stylized four-head proportions','SD・2頭身|two-head-tall chibi proportions'],
+  wardrobe: ['学生の制服|school uniform','カジュアル|casual outfit','ビジネス|business attire','フォーマル|formal attire','スポーツ|sportswear','作業着|workwear','自由入力|custom attire'],
+  season: ['春|spring clothes','夏|summer clothes','秋|autumn clothes','冬|winter clothes'],
+  framing: ['胸上|bust portrait','腰上|waist-up framing','全身|full-body framing','顔アップ|face close-up'],
+  blur: ['なし|crisp image without blur','弱い背景ぼけ|subtle background blur, face in sharp focus','強い背景ぼけ|strong background blur, face in sharp focus','前景ぼけ|soft foreground blur, subject in focus','動きぶれ|localized motion blur'],
+  grime: ['清潔|clean and well kept','軽い着用感|slight signs of wear','汗|sweat','ほこり|dust','泥汚れ|mud stains','強い汚れ|heavy grime'],
+  skin: ['自然な質感|natural skin texture','毛穴|subtle visible pores','乾燥|dry skin texture','赤み|mild redness','日焼け|sun-tanned skin','そばかす|freckles','古い傷跡|faint healed scars','擦り傷|minor abrasions'],
+  lenses: ['なし|natural eye color','ブラウン|brown contact lenses','グレー|gray contact lenses','ブルー|blue contact lenses','グリーン|green contact lenses','左右で異なる色|different-colored contact lenses in each eye'],
+  lensEdge: ['細いフチ|subtle limbal ring','太いフチ|prominent limbal ring','フチなし|no visible limbal ring'],
+  dye: ['自然な髪色|natural undyed hair','おしゃれ染め|dyed hair','ブリーチ|bleached hair','根元が伸びたブリーチ|bleached hair with grown-out roots','色落ち|faded hair dye','インナーカラー|contrasting inner hair color'],
+  damage: ['控えめ|subtle','中程度|moderate','目立つ|pronounced'],
+  face: ['輪郭|face shape','額|forehead','頬骨|cheekbones','顎|jawline','眉|eyebrows','目|eyes','まぶた|eyelids','鼻|nose','小鼻|nostrils','口角|corners of the mouth','唇|lips','耳|ears'],
+  faceTrait: ['左側だけに特徴|a distinctive feature on the left side','右側だけに特徴|a distinctive feature on the right side','左右で少し異なる|slight natural asymmetry','丸みがある|rounded','細い|slender','幅広|wide','小さい|small'],
+  garment: ['トップス|top','羽織り|outerwear','ボトムス|bottoms','靴|shoes','バッグ|bag','小物|accessory'],
+  material: ['綿|cotton','麻|linen','ウール|wool','ウール混|wool blend','デニム|denim','レザー|leather','シルク|silk','ナイロン|nylon','ポリエステル|polyester'],
+  fit: ['ジャストサイズ|regular fit','ゆったり|relaxed fit','細身|slim fit','オーバーサイズ|oversized'],
+  wear: ['新品に近い|like new','洗い込んだ|well washed','折りじわ|natural creases','色あせ|fading','ほつれ|fraying'],
+  color: ['黒|black','白|white','紺|navy','グレー|gray','茶|brown','赤|red','青|blue','緑|green','ベージュ|beige','ピンク|pink','金|blonde','銀|silver'],
+  pattern: ['無地|solid color','ストライプ|striped','チェック|checked','花柄|floral'],
+  uniform: ['ブレザー|blazer school uniform','セーラー服|sailor-style school uniform','学ラン|stand-collar school uniform','夏の半袖制服|short-sleeve summer school uniform'],
+  mood: ['柔らかな窓光|soft window light','曇り空の拡散光|overcast diffuse light','夕方の逆光|late-afternoon backlight','蛍光灯|fluorescent indoor light'],
+  gesture: ['振り向く途中|caught mid-turn','視線だけ先に向ける|eyes shift before the head turns','口を開きかける|lips just parting to speak','一息ついて目を伏せる|gaze lowered while pausing for a breath'],
+  ratio: ['縦 2:3|2:3','横 3:2|3:2','正方形 1:1|1:1','横長 16:9|16:9'],
+  resolution: ['4K|4K','8K|8K'],
+};
+
+// The second value is the exact form used in Midjourney. Visual constraints
+// that need context go in the main description rather than in --no.
+const avoid = {
+  photo: {
+    smoothing: ['強すぎる美肌補正・プラスチック肌','natural uneven skin texture with subtle pores'],
+    eyes: ['ガラス玉のような瞳','natural iris detail and subtle catchlights'],
+    symmetry: ['過度に左右対称な顔','subtle natural facial asymmetry'],
+    hdr: ['強すぎるHDR・輪郭強調','soft tonal transitions and natural edge detail'],
+    smile: ['作り笑い','relaxed, spontaneous expression'],
+  },
+  art: {
+    outline: ['輪郭線の二重化・色のはみ出し','intentional clean contours and controlled color boundaries'],
+    lighting: ['影の方向の不一致','a consistent light direction across the illustration'],
+    gloss: ['画風に合わない光沢・過度な立体感','surface shading consistent with the selected illustration style'],
+    proportions: ['指定した頭身からのズレ','consistent selected body proportions'],
+    eyesMismatch: ['意図しない左右の瞳色の違い','consistent iris color on both sides'],
+  },
+  common: {
+    anatomy: ['余分な指・手足','believable limb and finger anatomy'],
+    watermark: ['透かし','watermark',true],
+    logo: ['意図しないロゴ','logo',true],
+    text: ['意図しない文字','text',true],
+  },
+  purpose: {
+    portrait: {blurFace:['顔にかかるぼけ','face in sharp focus'],crowd:['背景の余計な人物','a single subject, uncluttered background']},
+    sheet: {drift:['ビューごとの衣装・髪型・頭身のズレ','identical hairstyle, outfit and proportions across views'],crop:['全身の見切れ','full figure visible in each turnaround view']},
+    icon: {iconCrop:['丸い切り抜きで顔が見切れる','clear margin around the face for a circular crop'],background:['細かすぎる背景','simple background and clearly readable eyes']},
+  },
+};

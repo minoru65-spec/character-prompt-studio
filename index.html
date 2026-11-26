@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="実写・イラストのキャラクタープロンプトを作成。MidjourneyとGPTに対応。">
+<title>キャラクタージェネレータ</title>
+<link rel="stylesheet" href="style.css">
+<script src="data.js" defer></script>
+<script src="app.js" defer></script>
+</head>
+<body>
+<header><div class="shell brand"><span aria-hidden="true" class="mark">✳</span> CHARACTER STUDIO</div></header>
+<main class="shell">
+  <div class="intro">
+    <h1>キャラクタージェネレータ</h1>
+    <p>人物の設定から、実写・イラストの画像生成プロンプトを作成。</p>
+  </div>
+  <div class="layout">
+    <form id="settings">
+      <fieldset class="mode panel">
+        <legend>描画タイプ</legend>
+        <label><input type="radio" name="mode" value="photo" checked> 実写</label>
+        <label><input type="radio" name="mode" value="art"> イラスト</label>
+      </fieldset>
+      <section class="panel"><h2>用途と人物</h2><div id="profile" class="grid"></div></section>
+      <details class="panel"><summary>顔・肌・髪の特徴</summary><div id="appearance" class="grid"></div><div id="faces"></div><button type="button" id="add-face">＋ 顔の特徴を追加</button></details>
+      <details class="panel" open><summary>衣装とアイテム</summary><div id="wardrobe" class="grid"></div><div id="items"></div><button type="button" id="add-item">＋ アイテムを追加</button></details>
+      <details class="panel"><summary>構図・質感・仕上げ</summary><div id="finish" class="grid"></div></details>
+      <details class="panel" open><summary>避けたい表現</summary><div id="negative" class="checks"></div><div id="negative-text"></div></details>
+    </form>
+    <aside class="panel output">
+      <h2>プロンプト</h2>
+      <div id="format" class="grid"></div>
+      <label class="result">出力プレビュー（編集可）<textarea id="result" spellcheck="false" rows="15"></textarea></label>
+      <p id="warning" role="status" hidden></p>
+      <div class="actions">
+        <button id="copy" type="button" class="primary">コピー</button>
+        <button id="regenerate" type="button">設定から再生成</button>
+      </div>
+      <div class="save">
+        <h3>お気に入りと設定ファイル</h3>
+        <label>保存名<input id="favorite-name" placeholder="例：秋の制服"></label>
+        <div class="actions"><button id="save" type="button">お気に入りに保存</button><button id="export" type="button">JSON出力</button><label class="file-button">JSON読込<input id="import" type="file" accept=".json,application/json"></label></div>
+        <div class="actions"><select id="favorites" aria-label="お気に入り"></select><button id="load" type="button">開く</button><button id="remove" type="button">削除</button></div>
+      </div>
+      <p id="status" aria-live="polite"></p>
+    </aside>
+  </div>
+</main>
+</body>
+</html>
