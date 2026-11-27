@@ -56,7 +56,18 @@ const choices = {
   gesture: ['振り向く途中|caught mid-turn','視線だけ先に向ける|eyes shift before the head turns','口を開きかける|lips just parting to speak','一息ついて目を伏せる|gaze lowered while pausing for a breath'],
   ratio: ['縦 2:3|2:3','横 3:2|3:2','正方形 1:1|1:1','横長 16:9|16:9'],
   resolution: ['4K|4K','8K|8K'],
+  finishEffect: ['スーパークリア|ultra-clear rendering, crisp edges and finely resolved detail','4色版ズレ|four-color CMYK print with visibly offset ink plates','ダブルトーン|two-ink duotone treatment with one ink for shadows and the other for highlights','ローキー|low-key lighting with deep shadows and restrained highlights','ハイコントラスト（硬調）モノクロ|hard-contrast black-and-white rendering with deep blacks and bright whites','リソグラフ|risograph print with grainy ink and subtle registration drift','活版印刷|letterpress print with lightly debossed ink on textured paper','シルクスクリーン|screen print with flat layers of opaque spot-color ink','粗いハーフトーン|coarse halftone shading with large visible dots','ドット|regular visible dot pattern','アメリカンコミック風|American comic-book finish with bold ink contours, flat spot colors and Ben-Day dots'],
 };
+
+choices.expression.push(
+  '涙をながす|tears running down the cheeks',
+  'うるうる|watery eyes with tears welling at the lower eyelids',
+  'ふくれっ面|pouting with puffed cheeks',
+  'ウインク|winking with one eye closed and the other open',
+  '変顔|making a silly exaggerated face',
+  'おどける|playfully clowning with a mischievous grin',
+  'イィ～ダ！|playful teasing face, pulling down one lower eyelid with a finger and sticking out the tongue'
+);
 
 // The second value is the exact form used in Midjourney. Visual constraints
 // that need context go in the main description rather than in --no.

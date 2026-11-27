@@ -31,6 +31,17 @@ function normalize(value) {
 const fields = new Set('mode purpose age platform language gender nationality includeNationality birth raised location occupation profileNote photoStyle artStyle photoBody artBody wardrobe uniform season wardrobeNote framing blur grime grimeArea skin skinArea damage lenses lensEdge lensNote dye hairColor hairNote artSkin setting gesture mood shotNote ratio resolution'.split(' '));
 for (const key of ['hairstyle','bangs','build','gaze','expression','cameraAngle','cameraLens']) fields.add(key);
 for (const key of ['lineWidth','linePressure','placement','subjectScale','negativeSpace']) fields.add(key);
+const midNumbers = [
+  ['stylize','作風の強さ',1000,100],
+  ['chaos','構図や案のばらつき',100,0],
+  ['weird','意外性',3000,0],
+  ['seed','シード',4294967295,0],
+];
+for (const key of ['finishEffect','inkOne','inkTwo','midEnabled','midAspect','midNo','midRaw']) fields.add(key);
+for (const [flag] of midNumbers) {
+  fields.add(`mid-${flag}`);
+  fields.add(`value-${flag}`);
+}
 const cameraOptions = key => choices[key].map(([label], index) => [String(index + 1), label]);
 const saved = readStorage();
 let state = defaults();
@@ -77,6 +88,12 @@ function field(parent, target, key, label, options, config = {}) {
     control.value = target[key] || '';
     control.placeholder = config.placeholder || '';
     control.maxLength = 500;
+    if (config.max !== undefined) {
+      control.type = 'number';
+      control.min = '0';
+      control.max = config.max;
+      control.step = '1';
+    }
   }
   if (!config.check) wrapper.append(control);
   control.disabled = !!config.disabled;
@@ -226,11 +243,34 @@ function render() {
   input(finish,'setting','背景・場所・時間帯');
   select(finish,'ratio','縦横比');
   select(finish,'resolution','希望解像度');
+  select(finish,'finishEffect','仕上げ効果','finishEffect',{refresh:true});
+  if (choices.finishEffect.some((effect,index) => effect === state.finishEffect && [2,5,6,7,8,9,10].includes(index))) {
+    const duotone = state.finishEffect === choices.finishEffect[2];
+    input(finish,'inkOne',duotone ? 'シャドウの色' : '主インク色','例：濃紺 / navy');
+    input(finish,'inkTwo',duotone ? 'ハイライトの色' : '補助インク色','例：朱赤 / vermilion');
+  }
   field(finish,state,'shotNote','構図・表情差分などの補足',null,{wide:true});
 
   field($('format'),state,'platform','出力先',[['gpt','GPT'],['mid','Midjourney']],{required:true,refresh:true});
   if (state.platform === 'gpt') field($('format'),state,'language','出力言語',[['ja','日本語'],['en','English']],{required:true});
-  else $('format').append(node('p','選択項目は英語で出力します。自由入力は入力した言語のまま反映されます。','wide'));
+  else {
+    const settings = $('format');
+    const enabled = state.midEnabled !== false;
+    const checkbox = (key,label,defaultOn=false) => {
+      if (state[key] === undefined && defaultOn) state[key] = true;
+      field(settings,state,key,label,null,{check:true,refresh:true,disabled:key !== 'midEnabled' && !enabled});
+    };
+    checkbox('midEnabled','Midjourneyパラメーターを使う',true);
+    checkbox('midAspect','縦横比を付ける（--ar）',true);
+    checkbox('midNo','除外対象を付ける（--no）',true);
+    checkbox('midRaw','Rawモード（--raw）');
+    for (const [flag,label,max,defaultValue] of midNumbers) {
+      checkbox(`mid-${flag}`,`${label}（--${flag}）`);
+      const key = `value-${flag}`;
+      state[key] ??= String(defaultValue);
+      field(settings,state,key,`${label}の値（0～${max}）`,null,{max,disabled:!enabled || !state[`mid-${flag}`]});
+    }
+  }
 
   field($('negative-text'),state.negativeText,state.mode,'避けたい表現を追加（自由入力）',null,{placeholder:'例：背景の看板やポスターを避ける'});
   renderRows();
@@ -304,6 +344,12 @@ function build(s) {
     value(s.gesture),s.setting,value(s.mood),
     s.grime && describe(pair('清潔感・汚れ','wear and dirt'),join([value(s.grime),s.grimeArea])),
     value(s.blur),s.shotNote,
+    describe(pair('仕上げ効果','finish effect'),value(s.finishEffect)),
+    [2,5,6,7,8,9,10].some(index => s.finishEffect === choices.finishEffect[index]) &&
+      describe(pair('インク配色','ink palette'),join([
+        describe(s.finishEffect === choices.finishEffect[2] ? pair('シャドウ','shadow ink') : pair('主色','primary ink'),s.inkOne),
+        describe(s.finishEffect === choices.finishEffect[2] ? pair('ハイライト','highlight ink') : pair('補助色','secondary ink'),s.inkTwo),
+      ])),
     s.resolution && describe(pair('希望解像度','requested resolution'),value(s.resolution)),
     s.platform !== 'mid' && describe(pair('縦横比','aspect ratio'),ratio),
   ];
@@ -329,8 +375,24 @@ function build(s) {
     const positive = rules.filter(([,rule]) => !rule[2]).map(([,rule]) => rule[1]);
     const exclude = rules.filter(([,rule]) => rule[2]).map(([,rule]) => rule[1]);
     if (detailedArt) exclude.push('photograph');
-    const body = [...lines,...positive,custom && `Avoid the following appearance: ${custom}`].filter(Boolean).join('\n');
-    return {prompt:`${body}\n--ar ${ratio}${exclude.length ? ` --no ${exclude.join(', ')}` : ''}`, warnings};
+    const params = [];
+    const useParams = s.midEnabled !== false;
+    const useNo = useParams && s.midNo !== false;
+    if (useParams) {
+      if (s.midAspect !== false) params.push(`--ar ${ratio}`);
+      if (s.midRaw) params.push('--raw');
+      for (const [flag,label,max] of midNumbers) {
+        if (!s[`mid-${flag}`]) continue;
+        const raw = String(s[`value-${flag}`] ?? '');
+        if (/^\d+$/.test(raw) && Number(raw) <= max) params.push(`--${flag} ${Number(raw)}`);
+        else warnings.push(`${label}には0～${max}の整数を入力してください`);
+      }
+      if (useNo && exclude.length) params.push(`--no ${exclude.join(', ')}`);
+    }
+    const avoidText = [custom,...(useNo ? [] : exclude)].filter(Boolean).join(', ');
+    const body = [...lines,...positive,avoidText && `Avoid the following appearance: ${avoidText}`].filter(Boolean);
+    if (params.length) body.push(params.join(' '));
+    return {prompt:body.join('\n'),warnings};
   }
   const exclusions = rules.map(([,rule]) => {
     if (!en) return rule[0];
